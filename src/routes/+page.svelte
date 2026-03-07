@@ -4,15 +4,20 @@
     const games = [
         {
             id: "dissociation",
-            href: "/dissociation",
+            href: "/games/dissociation",
             statsHref: "/dissociation/stats",
             title: "Dissociation",
-            emoji: "🔄",
-            tag: "Cognitive Flexibility",
-            description:
-                "Rules switch based on shape properties. Can you keep up?",
-            color: "#4B7BE8",
-            available: true,
+            description: "Rules switch based on shape properties. ",
+            color: "var(--blue)",
+        },
+        {
+            id: "short-term-memory",
+            href: "/games/short-term-memory",
+            statsHref: "/short-term-memory/stats",
+            title: "Short term memory",
+
+            description: "Train short term memory",
+            color: "var(--green)",
         },
     ];
 
@@ -40,88 +45,85 @@
     <main>
         <div class="grid">
             {#each games as game}
-                {@const stats = game.available ? getStats(game.id) : null}
-                <article class="card" class:dimmed={!game.available}>
-                    <div class="card-body">
+                {@const stats = getStats(game.id)}
+                <article
+                    class="card padded flex-col justify-content:space-between"
+                >
+                    <div class="game-description">
                         <h3>{game.title}</h3>
-                        <p class="desc">{game.description}</p>
+                        <p>{game.description}</p>
 
-                        {#if game.available}
-                            {#if stats}
-                                <div class="stats-row">
-                                    <div class="stat">
-                                        <span class="sv"
-                                            >{stats.last.accuracy}%</span
-                                        >
-                                        <span class="sl">Last accuracy</span>
-                                    </div>
-                                    <div class="divider"></div>
-                                    <div class="stat">
-                                        <span class="sv"
-                                            >{stats.best.score.toLocaleString()}</span
-                                        >
-                                        <span class="sl">Best score</span>
-                                    </div>
-                                    <div class="divider"></div>
-                                    <div class="stat">
-                                        <span class="sv">{stats.plays}</span>
-                                        <span class="sl">Plays</span>
-                                    </div>
-                                </div>
-                            {/if}
-
-                            <div class="btn-row">
-                                <a
-                                    href={game.href}
-                                    class="btn-play"
-                                    style:background={game.color}
-                                >
-                                    {stats ? "Play Again" : "Play Now"}
-                                </a>
-                                {#if stats}
-                                    <a
-                                        href={game.statsHref}
-                                        class="btn-stats"
-                                        title="View stats"
+                        {#if stats}
+                            <div class="stats-row">
+                                <div class="stat">
+                                    <span class="sv"
+                                        >{stats.last.accuracy}%</span
                                     >
-                                        <svg
-                                            width="15"
-                                            height="15"
-                                            viewBox="0 0 15 15"
-                                            fill="none"
-                                        >
-                                            <rect
-                                                x="1"
-                                                y="8"
-                                                width="3"
-                                                height="6"
-                                                rx="1"
-                                                fill="currentColor"
-                                            />
-                                            <rect
-                                                x="6"
-                                                y="5"
-                                                width="3"
-                                                height="9"
-                                                rx="1"
-                                                fill="currentColor"
-                                            />
-                                            <rect
-                                                x="11"
-                                                y="2"
-                                                width="3"
-                                                height="12"
-                                                rx="1"
-                                                fill="currentColor"
-                                            />
-                                        </svg>
-                                        Stats
-                                    </a>
-                                {/if}
+                                    <span class="sl">Last accuracy</span>
+                                </div>
+                                <div class="divider"></div>
+                                <div class="stat">
+                                    <span class="sv"
+                                        >{stats.best.score.toLocaleString()}</span
+                                    >
+                                    <span class="sl">Best score</span>
+                                </div>
+                                <div class="divider"></div>
+                                <div class="stat">
+                                    <span class="sv">{stats.plays}</span>
+                                    <span class="sl">Plays</span>
+                                </div>
                             </div>
-                        {:else}
-                            <div class="coming-badge">Coming soon</div>
                         {/if}
+                    </div>
+
+                    <div class="flex-row gap-small">
+                        <a
+                            href={game.href}
+                            class="btn-play"
+                            style:background={game.color}
+                        >
+                            Play
+                        </a>
+
+                        <a
+                            href={game.statsHref}
+                            class="btn-stats"
+                            title="View stats"
+                        >
+                            <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 15 15"
+                                fill="none"
+                            >
+                                <rect
+                                    x="1"
+                                    y="8"
+                                    width="3"
+                                    height="6"
+                                    rx="1"
+                                    fill="currentColor"
+                                />
+                                <rect
+                                    x="6"
+                                    y="5"
+                                    width="3"
+                                    height="9"
+                                    rx="1"
+                                    fill="currentColor"
+                                />
+                                <rect
+                                    x="11"
+                                    y="2"
+                                    width="3"
+                                    height="12"
+                                    rx="1"
+                                    fill="currentColor"
+                                />
+                            </svg>
+                            Stats
+                        </a>
                     </div>
                 </article>
             {/each}
@@ -129,7 +131,7 @@
     </main>
 </div>
 
-<style>
+<style lang="scss">
     .page {
         min-height: 100vh;
     }
@@ -171,23 +173,21 @@
         overflow: hidden;
     }
 
-    .card-body {
-        padding: 18px 20px 20px;
-    }
+    .card .game-description {
+        h3 {
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 7px;
+            letter-spacing: -0.01em;
+        }
 
-    .card-body h3 {
-        font-size: 18px;
-        font-weight: 800;
-        margin-bottom: 7px;
-        letter-spacing: -0.01em;
-    }
-
-    .desc {
-        font-size: 13.5px;
-        color: var(--text-muted);
-        line-height: 1.6;
-        margin-bottom: 16px;
-        font-weight: 500;
+        p {
+            font-size: 13.5px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
     }
 
     .stats-row {
@@ -226,25 +226,6 @@
         height: 28px;
         background: var(--border);
         flex-shrink: 0;
-    }
-
-    .chart-wrap {
-        margin-bottom: 14px;
-    }
-
-    .chart-label {
-        display: block;
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--text-muted);
-        margin-bottom: 5px;
-    }
-
-    .btn-row {
-        display: flex;
-        gap: 8px;
     }
 
     .btn-play {
