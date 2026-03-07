@@ -34,32 +34,15 @@
 
 <div class="page">
     <header>
-        <div class="header-inner">
-            <div class="brand">
-                <div class="brand-text">
-                    <h1>Pilot Training</h1>
-                    <p>Games to train for pilot exam</p>
-                </div>
-            </div>
-        </div>
+        <h1>Pilot Training</h1>
+        <p>Games to train for pilot exam</p>
     </header>
 
     <main>
-        <div class="section-head">
-            <h2>All Games</h2>
-        </div>
-
         <div class="grid">
             {#each games as game}
                 {@const stats = game.available ? getStats(game.id) : null}
                 <article class="card" class:dimmed={!game.available}>
-                    <div class="card-top" style:background={game.bg}>
-                        <span class="card-emoji">{game.emoji}</span>
-                        <span class="tag" style:color={game.color}
-                            >{game.tag}</span
-                        >
-                    </div>
-
                     <div class="card-body">
                         <h3>{game.title}</h3>
                         <p class="desc">{game.description}</p>
@@ -124,31 +107,17 @@
     header {
         background: var(--surface);
         border-bottom: 1px solid var(--border);
-        padding: 0 24px;
+        padding: 1rem;
         position: sticky;
         top: 0;
         z-index: 100;
-        box-shadow: var(--shadow-sm);
-    }
 
-    .header-inner {
-        max-width: 960px;
-        margin: 0 auto;
-        padding: 18px 0;
-    }
-
-    .brand {
         display: flex;
-        align-items: center;
-        gap: 14px;
+        flex-direction: column;
+        gap: 0.8rem;
     }
 
-    .brain-icon {
-        font-size: 38px;
-        line-height: 1;
-    }
-
-    .brand-text h1 {
+    header h1 {
         font-size: 22px;
         font-weight: 900;
         color: var(--text);
@@ -156,34 +125,10 @@
         line-height: 1.1;
     }
 
-    .brand-text p {
-        font-size: 13px;
-        color: var(--text-muted);
-        margin-top: 2px;
-        font-weight: 500;
-    }
-
     main {
         max-width: 960px;
         margin: 0 auto;
         padding: 44px 24px 80px;
-    }
-
-    .section-head {
-        margin-bottom: 28px;
-    }
-
-    .section-head h2 {
-        font-size: 28px;
-        font-weight: 900;
-        letter-spacing: -0.02em;
-    }
-
-    .section-head p {
-        font-size: 14px;
-        color: var(--text-muted);
-        margin-top: 5px;
-        font-weight: 500;
     }
 
     .grid {
@@ -193,46 +138,9 @@
     }
 
     .card {
-        background: var(--surface);
-        border-radius: var(--radius);
+        background: white;
+        border: 2px solid black;
         overflow: hidden;
-        box-shadow: var(--shadow);
-        border: 1px solid var(--border);
-        transition:
-            transform 0.2s ease,
-            box-shadow 0.2s ease;
-    }
-
-    .card:hover {
-        transform: translateY(-3px);
-        box-shadow: var(--shadow-lg);
-    }
-
-    .card.dimmed {
-        opacity: 0.55;
-        pointer-events: none;
-    }
-
-    .card-top {
-        padding: 22px 20px 18px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .card-emoji {
-        font-size: 34px;
-        line-height: 1;
-    }
-
-    .tag {
-        font-size: 10.5px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        background: rgba(255, 255, 255, 0.72);
-        padding: 4px 11px;
-        border-radius: 99px;
     }
 
     .card-body {
@@ -300,22 +208,16 @@
         gap: 8px;
         width: 100%;
         padding: 12px 16px;
-        border-radius: var(--radius-sm);
+        border-radius: 0;
         color: white;
         font-size: 15px;
         font-weight: 800;
         text-decoration: none;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
         transition:
             opacity 0.12s,
             transform 0.12s,
             box-shadow 0.12s;
-    }
-
-    .btn-play:hover {
-        opacity: 0.92;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
     }
 
     .coming-badge {

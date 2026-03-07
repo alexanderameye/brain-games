@@ -1,11 +1,3 @@
-*,
-*::before,
-*::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
 :root {
     --bg: #f5efe6;
     --bg-subtle: #ede6db;
@@ -45,7 +37,7 @@
     --radius: 16px;
     --radius-lg: 24px;
 
-    font-family: "Nunito", sans-serif;
+    font-family: monospace;
 }
 
 html,
@@ -53,7 +45,7 @@ body {
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
-    font-family: "Nunito", sans-serif;
+
     -webkit-font-smoothing: antialiased;
 }
 
