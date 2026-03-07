@@ -1,13 +1,7 @@
 :root {
-    --bg: #f5efe6;
-    --bg-subtle: #ede6db;
-    --surface: #ffffff;
-    --border: #e2d8cc;
-    --border-light: #ede6db;
-
-    --text: #2c2416;
-    --text-muted: #8b7d6e;
-    --text-faint: #b8ada0;
+    --light: #ffffff;
+    --dark: #000000;
+    --off: #ede6db;
 
     --blue: #4b7be8;
     --blue-dark: #3a69d6;
@@ -27,17 +21,34 @@
 
     --yellow: #f59e0b;
 
-    --shadow-sm: 0 1px 4px rgba(60, 40, 20, 0.06);
-    --shadow: 0 2px 12px rgba(60, 40, 20, 0.08);
-    --shadow-md: 0 4px 20px rgba(60, 40, 20, 0.1);
-    --shadow-lg: 0 8px 32px rgba(60, 40, 20, 0.13);
-
     --radius-xs: 6px;
     --radius-sm: 10px;
     --radius: 16px;
     --radius-lg: 24px;
 
     font-family: monospace;
+}
+
+.primary {
+    background-color: var(--blue);
+    color: white;
+}
+
+.secondary {
+    background-color: #fffbeb;
+    color: #92400e;
+}
+
+.secondary.outlined {
+    border: 1.5px solid #fde68a;
+}
+
+.rounded {
+    border-radius: 0.4rem;
+}
+
+.padded {
+    padding: 1rem;
 }
 
 html,
@@ -47,24 +58,4 @@ body {
     min-height: 100vh;
 
     -webkit-font-smoothing: antialiased;
-}
-
-button {
-    font-family: inherit;
-    cursor: pointer;
-    border: none;
-    outline: none;
-    transition:
-        transform 0.12s ease,
-        opacity 0.12s ease,
-        box-shadow 0.12s ease;
-}
-
-button:focus-visible {
-    outline: 3px solid var(--blue);
-    outline-offset: 2px;
-}
-
-button:active {
-    transform: scale(0.97) !important;
 }

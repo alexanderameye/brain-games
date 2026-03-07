@@ -1,5 +1,5 @@
-<script>
-    import { progress } from "$lib/stores.svelte.js";
+<script lang="ts">
+    import { progress } from "$lib/stores.svelte";
 
     const games = [
         {
