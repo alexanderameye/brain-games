@@ -23,6 +23,10 @@
     import triangleFilledBlue from "$lib/assets/shapes/blue_filled_triangle.svg";
     import triangleFilledOrange from "$lib/assets/shapes/orange_filled_triangle.svg";
 
+    import iconCorrect from "$lib/assets/icons/true.svg";
+    import iconWrong from "$lib/assets/icons/false.svg";
+    import iconMiss from "$lib/assets/icons/late.svg";
+
     const shapeAssets: Record<string, string> = {
         "square-empty-blue": squareEmptyBlue,
         "square-empty-orange": squareEmptyOrange,
@@ -127,10 +131,14 @@
         const avgRt = rts.length
             ? Math.round(rts.reduce((a, b) => a + b, 0) / rts.length)
             : null;
+        // 300 base pts for every correct answer + up to 700 speed pts.
+        // Correct at 0ms → 1000pts. Correct at 1000ms+ → 300pts (accuracy still rewarded).
         const score = Math.round(
             trials.reduce((sum, t) => {
                 if (!t.correct || t.rt === null) return sum;
-                return sum + Math.max(0, 1000 - t.rt);
+                return (
+                    sum + 300 + Math.max(0, Math.round(700 * (1 - t.rt / 1000)))
+                );
             }, 0),
         );
         progress.add("dissociation", {
@@ -212,11 +220,11 @@
                     class="secondary outlined rounded padded"
                     style="text-align:center"
                 >
-                    Faster correct answers score more points!
+                    ⚡ Speed matters — faster correct answers score more points
                 </p>
 
                 <button class="primary rounded padded wide" onclick={startGame}>
-                    Start
+                    Start — 30 shapes
                 </button>
             {/if}
         </div>
@@ -256,11 +264,11 @@
                     />
                 </div>
             {:else if feedback === "correct"}
-                <span class="fb-icon" style="color:var(--green-dark)">✓</span>
+                <img src={iconCorrect} alt="Correct" class="fb-icon" />
             {:else if feedback === "wrong"}
-                <span class="fb-icon" style="color:var(--red-dark)">✗</span>
+                <img src={iconWrong} alt="Wrong" class="fb-icon" />
             {:else if feedback === "miss"}
-                <span class="fb-icon" style="color:var(--yellow)">?</span>
+                <img src={iconMiss} alt="Miss" class="fb-icon" />
             {:else}
                 <span class="arena-dot"></span>
             {/if}
@@ -409,10 +417,6 @@
 {/if}
 
 <style>
-    button {
-        border: 0;
-    }
-
     .center-wrap {
         display: flex;
         align-items: center;
@@ -513,8 +517,8 @@
     }
 
     .fb-icon {
-        font-size: 60px;
-        font-weight: 900;
+        width: 80px;
+        height: 80px;
         animation: popIn 0.16s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     }
 
