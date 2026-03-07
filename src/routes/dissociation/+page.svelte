@@ -212,11 +212,11 @@
                     class="secondary outlined rounded padded"
                     style="text-align:center"
                 >
-                    ⚡ Speed matters — faster correct answers score more points
+                    Faster correct answers score more points!
                 </p>
 
                 <button class="primary rounded padded wide" onclick={startGame}>
-                    Start — 30 shapes
+                    Start
                 </button>
             {/if}
         </div>
@@ -409,6 +409,10 @@
 {/if}
 
 <style>
+    button {
+        border: 0;
+    }
+
     .center-wrap {
         display: flex;
         align-items: center;

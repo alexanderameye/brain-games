@@ -5,18 +5,18 @@
         {
             id: "dissociation",
             href: "/dissociation",
+            statsHref: "/dissociation/stats",
             title: "Dissociation",
             emoji: "🔄",
             tag: "Cognitive Flexibility",
             description:
                 "Rules switch based on shape properties. Can you keep up?",
             color: "#4B7BE8",
-            bg: "#EBF0FD",
             available: true,
         },
     ];
 
-    function getStats(gameId) {
+    function getStats(gameId: string) {
         const results = progress.get(gameId);
         if (!results.length) return null;
         const last = results[results.length - 1];
@@ -37,7 +37,6 @@
         <h1>Pilot Training</h1>
         <p>Games to train for pilot exam</p>
     </header>
-
     <main>
         <div class="grid">
             {#each games as game}
@@ -71,24 +70,55 @@
                                 </div>
                             {/if}
 
-                            <a
-                                href={game.href}
-                                class="btn-play"
-                                style:background={game.color}
-                            >
-                                {stats ? "Play Again" : "Play Now"}
-                                <svg
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 16 16"
-                                    fill="none"
+                            <div class="btn-row">
+                                <a
+                                    href={game.href}
+                                    class="btn-play"
+                                    style:background={game.color}
                                 >
-                                    <path
-                                        d="M4 2.5l9 5.5-9 5.5V2.5z"
-                                        fill="currentColor"
-                                    />
-                                </svg>
-                            </a>
+                                    {stats ? "Play Again" : "Play Now"}
+                                </a>
+                                {#if stats}
+                                    <a
+                                        href={game.statsHref}
+                                        class="btn-stats"
+                                        title="View stats"
+                                    >
+                                        <svg
+                                            width="15"
+                                            height="15"
+                                            viewBox="0 0 15 15"
+                                            fill="none"
+                                        >
+                                            <rect
+                                                x="1"
+                                                y="8"
+                                                width="3"
+                                                height="6"
+                                                rx="1"
+                                                fill="currentColor"
+                                            />
+                                            <rect
+                                                x="6"
+                                                y="5"
+                                                width="3"
+                                                height="9"
+                                                rx="1"
+                                                fill="currentColor"
+                                            />
+                                            <rect
+                                                x="11"
+                                                y="2"
+                                                width="3"
+                                                height="12"
+                                                rx="1"
+                                                fill="currentColor"
+                                            />
+                                        </svg>
+                                        Stats
+                                    </a>
+                                {/if}
+                            </div>
                         {:else}
                             <div class="coming-badge">Coming soon</div>
                         {/if}
@@ -111,7 +141,6 @@
         position: sticky;
         top: 0;
         z-index: 100;
-
         display: flex;
         flex-direction: column;
         gap: 0.8rem;
@@ -120,7 +149,6 @@
     header h1 {
         font-size: 22px;
         font-weight: 900;
-        color: var(--text);
         letter-spacing: -0.02em;
         line-height: 1.1;
     }
@@ -180,7 +208,6 @@
         display: block;
         font-size: 16px;
         font-weight: 900;
-        color: var(--text);
         letter-spacing: -0.02em;
     }
 
@@ -201,23 +228,60 @@
         flex-shrink: 0;
     }
 
+    .chart-wrap {
+        margin-bottom: 14px;
+    }
+
+    .chart-label {
+        display: block;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        margin-bottom: 5px;
+    }
+
+    .btn-row {
+        display: flex;
+        gap: 8px;
+    }
+
     .btn-play {
+        flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
-        width: 100%;
         padding: 12px 16px;
-        border-radius: 0;
         color: white;
         font-size: 15px;
         font-weight: 800;
         text-decoration: none;
+        transition: opacity 0.12s;
+    }
 
-        transition:
-            opacity 0.12s,
-            transform 0.12s,
-            box-shadow 0.12s;
+    .btn-play:hover {
+        opacity: 0.88;
+    }
+
+    .btn-stats {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding: 12px 14px;
+        border: 2px solid black;
+        font-size: 13px;
+        font-weight: 700;
+        text-decoration: none;
+        color: inherit;
+        white-space: nowrap;
+        transition: background 0.1s;
+    }
+
+    .btn-stats:hover {
+        background: #f5f5f5;
     }
 
     .coming-badge {
