@@ -1,7 +1,6 @@
 <script lang="ts">
     import { progress } from "$lib/stores.svelte";
     import type { RunResult } from "$lib/games/dissociation.js";
-    import { browser } from "$app/environment";
 
     const runs = $derived(progress.get("dissociation"));
     const hasData = $derived(runs.length > 0);
@@ -35,89 +34,139 @@
             : 0,
     );
 
-    // ── Chart helpers ─────────────────────────────────────────────────────────
-    const W = 600,
-        H = 160,
-        PAD = { top: 12, right: 12, bottom: 32, left: 44 };
-    const innerW = W - PAD.left - PAD.right;
-    const innerH = H - PAD.top - PAD.bottom;
-
-    type ChartLine = {
-        points: string;
-        area: string;
-        dots: { x: number; y: number; run: RunResult }[];
-        yMin: number;
-        yMax: number;
-        yTicks: number[];
-    };
-
-    function buildChart(
-        getValue: (r: RunResult) => number | null,
-    ): ChartLine | null {
-        const valid = runs.filter((r) => getValue(r) !== null);
-        if (valid.length < 2) return null;
-        const vals = valid.map((r) => getValue(r) as number);
-        const yMin = Math.min(...vals);
-        const yMax = Math.max(...vals);
-        const range = yMax - yMin || 1;
-
-        // Nice tick values
-        const step =
-            Math.ceil(range / 4 / 100) * 100 ||
-            Math.ceil(range / 4 / 10) * 10 ||
-            1;
-        const tickMin = Math.floor(yMin / step) * step;
-        const tickMax = Math.ceil(yMax / step) * step;
-        const yTicks: number[] = [];
-        for (let t = tickMin; t <= tickMax; t += step) yTicks.push(t);
-
-        const xScale = (i: number) =>
-            PAD.left + (i / (valid.length - 1)) * innerW;
-        const yScale = (v: number) =>
-            PAD.top + innerH - ((v - tickMin) / (tickMax - tickMin)) * innerH;
-
-        const dots = valid.map((run, i) => ({
-            x: xScale(i),
-            y: yScale(getValue(run) as number),
-            run,
-        }));
-
-        const ptStr = dots.map((d) => `${d.x},${d.y}`).join(" ");
-        const area = `${PAD.left},${PAD.top + innerH} ${ptStr} ${PAD.left + innerW},${PAD.top + innerH}`;
-
-        return {
-            points: ptStr,
-            area,
-            dots,
-            yMin: tickMin,
-            yMax: tickMax,
-            yTicks,
-        };
+    // ── Day grouping ──────────────────────────────────────────────────────────
+    // Groups runs by calendar day and builds open/high/low/close per day.
+    function dayKey(ts: number): string {
+        const d = new Date(ts);
+        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
     }
 
-    const scoreChart = $derived(buildChart((r) => r.score));
-    const accuracyChart = $derived(buildChart((r) => r.accuracy));
-    const rtChart = $derived(buildChart((r) => r.avgRt ?? null));
+    interface DayCandle {
+        date: number; // timestamp of first run that day
+        open: number; // first run
+        close: number; // last run
+        high: number;
+        low: number;
+        runs: RunResult[];
+    }
+
+    function groupByDay(
+        getValue: (r: RunResult) => number | null,
+    ): DayCandle[] {
+        const map = new Map<
+            string,
+            { date: number; vals: number[]; runs: RunResult[] }
+        >();
+        for (const run of runs) {
+            const v = getValue(run);
+            if (v === null) continue;
+            const key = dayKey(run.date);
+            if (!map.has(key))
+                map.set(key, { date: run.date, vals: [], runs: [] });
+            map.get(key)!.vals.push(v);
+            map.get(key)!.runs.push(run);
+        }
+        return [...map.values()].map(({ date, vals, runs }) => ({
+            date,
+            open: vals[0],
+            close: vals[vals.length - 1],
+            high: Math.max(...vals),
+            low: Math.min(...vals),
+            runs,
+        }));
+    }
+
+    // ── Chart constants ───────────────────────────────────────────────────────
+    const W = 600,
+        H = 180;
+    const PAD = { top: 16, right: 16, bottom: 32, left: 48 };
+    const innerW = W - PAD.left - PAD.right;
+    const innerH = H - PAD.top - PAD.bottom;
+    const CANDLE_W = 12; // max body width; scales down when many candles
+
+    interface CandleChart {
+        candles: Array<{
+            x: number;
+            yHigh: number;
+            yLow: number;
+            yOpen: number;
+            yClose: number;
+            up: boolean; // close >= open
+            day: DayCandle;
+        }>;
+        yTicks: number[];
+        yMin: number;
+        yMax: number;
+    }
+
+    function buildCandleChart(
+        getValue: (r: RunResult) => number | null,
+    ): CandleChart | null {
+        const days = groupByDay(getValue);
+        if (days.length < 1) return null;
+
+        const allVals = days.flatMap((d) => [d.high, d.low]);
+        const rawMin = Math.min(...allVals);
+        const rawMax = Math.max(...allVals);
+        const range = rawMax - rawMin || 1;
+
+        // Nice round ticks
+        const magnitude = Math.pow(10, Math.floor(Math.log10(range)));
+        const step = Math.ceil(range / 4 / magnitude) * magnitude || 1;
+        const yMin = Math.floor(rawMin / step) * step;
+        const yMax = Math.ceil(rawMax / step) * step;
+        const yTicks: number[] = [];
+        for (let t = yMin; t <= yMax; t += step) yTicks.push(t);
+
+        const yScale = (v: number) =>
+            PAD.top + innerH - ((v - yMin) / (yMax - yMin)) * innerH;
+
+        const xStep = days.length > 1 ? innerW / (days.length - 1) : innerW / 2;
+        const xOf = (i: number) =>
+            days.length > 1 ? PAD.left + i * xStep : PAD.left + innerW / 2;
+
+        const candles = days.map((day, i) => ({
+            x: xOf(i),
+            yHigh: yScale(day.high),
+            yLow: yScale(day.low),
+            yOpen: yScale(day.open),
+            yClose: yScale(day.close),
+            up: day.close >= day.open,
+            day,
+        }));
+
+        return { candles, yTicks, yMin, yMax };
+    }
+
+    const scoreChart = $derived(buildCandleChart((r) => r.score));
+    const accuracyChart = $derived(buildCandleChart((r) => r.accuracy));
+    const rtChart = $derived(buildCandleChart((r) => r.avgRt ?? null));
 
     // ── Tooltip ───────────────────────────────────────────────────────────────
-    let tooltip = $state<{
+    interface TooltipData {
         x: number;
         y: number;
-        run: RunResult;
-        label: string;
-    } | null>(null);
+        day: DayCandle;
+        unit: string;
+        fmt: (v: number) => string;
+    }
+    let tooltip = $state<TooltipData | null>(null);
 
-    function showTooltip(e: MouseEvent, run: RunResult, label: string) {
-        const rect = (e.target as Element)
+    function showTooltip(
+        e: MouseEvent,
+        day: DayCandle,
+        unit: string,
+        fmt: (v: number) => string,
+    ) {
+        const svg = (e.target as Element)
             .closest("svg")!
             .getBoundingClientRect();
-        const svgEl = (e.target as Element).closest("svg")!;
-        const svgRect = svgEl.getBoundingClientRect();
         tooltip = {
-            x: e.clientX - svgRect.left,
-            y: e.clientY - svgRect.top - 10,
-            run,
-            label,
+            x: e.clientX - svg.left,
+            y: e.clientY - svg.top - 12,
+            day,
+            unit,
+            fmt,
         };
     }
 
@@ -125,7 +174,7 @@
         tooltip = null;
     }
 
-    // ── Format helpers ─────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
     function formatDate(ts: number) {
         return new Date(ts).toLocaleDateString(undefined, {
             month: "short",
@@ -140,13 +189,17 @@
         });
     }
 
-    // ── Y-axis label ──────────────────────────────────────────────────────────
-    function yLabel(chart: ChartLine, tick: number) {
-        const y =
+    function candleWidth(n: number): number {
+        // Shrink candle body when there are many days
+        return Math.max(4, Math.min(CANDLE_W, Math.floor(innerW / (n * 1.8))));
+    }
+
+    function yLabel(chart: CandleChart, tick: number): number {
+        return (
             PAD.top +
             innerH -
-            ((tick - chart.yMin) / (chart.yMax - chart.yMin)) * innerH;
-        return y;
+            ((tick - chart.yMin) / (chart.yMax - chart.yMin)) * innerH
+        );
     }
 </script>
 
@@ -157,13 +210,13 @@
 <div class="page">
     {#if !hasData}
         <div class="empty">
-            <p>No runs yet. Play the game first!</p>
+            <p>No runs yet — play the game first!</p>
             <a href="/dissociation" class="btn-primary rounded padded"
                 >Play now</a
             >
         </div>
     {:else}
-        <!-- ── Summary cards ───────────────────────────────────────────────── -->
+        <!-- ── Overview ───────────────────────────────────────────────────────── -->
         <section class="section">
             <h2 class="section-title">Overview</h2>
             <div class="summary-grid">
@@ -191,38 +244,24 @@
                 </div>
                 <div class="summary-card">
                     <span class="summary-val">{avgRt}<small>ms</small></span>
-                    <span class="summary-lbl">Avg response</span>
+                    <span class="summary-lbl">Avg response time</span>
                 </div>
             </div>
         </section>
 
-        <!-- ── Score chart ─────────────────────────────────────────────────── -->
+        <!-- ── Score candlestick ──────────────────────────────────────────────── -->
         {#if scoreChart}
+            {@const cw = candleWidth(scoreChart.candles.length)}
             <section class="section">
-                <h2 class="section-title">Score over time</h2>
-                <div class="chart-wrap" style="position:relative">
+                <h2 class="section-title">
+                    Score
+                    <span class="section-note"
+                        >one candle per day · open→close body · high/low wicks</span
+                    >
+                </h2>
+                <div class="chart-wrap">
                     <svg width="100%" viewBox="0 0 {W} {H}" class="chart-svg">
-                        <defs>
-                            <linearGradient
-                                id="score-grad"
-                                x1="0"
-                                y1="0"
-                                x2="0"
-                                y2="1"
-                            >
-                                <stop
-                                    offset="0%"
-                                    stop-color="#4B7BE8"
-                                    stop-opacity="0.15"
-                                />
-                                <stop
-                                    offset="100%"
-                                    stop-color="#4B7BE8"
-                                    stop-opacity="0"
-                                />
-                            </linearGradient>
-                        </defs>
-                        <!-- Grid lines -->
+                        <!-- Grid + y-axis -->
                         {#each scoreChart.yTicks as tick}
                             {@const y = yLabel(scoreChart, tick)}
                             <line
@@ -241,43 +280,46 @@
                                 fill="#aaa">{tick.toLocaleString()}</text
                             >
                         {/each}
-                        <!-- Area + line -->
-                        <polygon
-                            points={scoreChart.area}
-                            fill="url(#score-grad)"
-                        />
-                        <polyline
-                            points={scoreChart.points}
-                            fill="none"
-                            stroke="#4B7BE8"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        />
-                        <!-- Dots -->
-                        {#each scoreChart.dots as d}
-                            <circle
-                                cx={d.x}
-                                cy={d.y}
-                                r="4"
-                                fill="#4B7BE8"
-                                stroke="white"
-                                stroke-width="2"
+                        <!-- Candles -->
+                        {#each scoreChart.candles as c}
+                            <!-- Wick -->
+                            <line
+                                x1={c.x}
+                                y1={c.yHigh}
+                                x2={c.x}
+                                y2={c.yLow}
+                                stroke={c.up ? "#22C55E" : "#EF4444"}
+                                stroke-width="1.5"
+                            />
+                            <!-- Body — min 2px height so single-run days show clearly -->
+                            {@const bodyTop = Math.min(c.yOpen, c.yClose)}
+                            {@const bodyHeight = Math.max(
+                                2,
+                                Math.abs(c.yClose - c.yOpen),
+                            )}
+                            <rect
+                                x={c.x - cw / 2}
+                                y={bodyTop}
+                                width={cw}
+                                height={bodyHeight}
+                                fill={c.up ? "#22C55E" : "#EF4444"}
                                 style="cursor:pointer"
                                 onmouseenter={(e) =>
-                                    showTooltip(e, d.run, "Score")}
+                                    showTooltip(e, c.day, "pts", (v) =>
+                                        v.toLocaleString(),
+                                    )}
                                 onmouseleave={hideTooltip}
                             />
                         {/each}
-                        <!-- X axis labels — show first, last, and every ~4th -->
-                        {#each scoreChart.dots as d, i}
-                            {#if i === 0 || i === scoreChart.dots.length - 1 || i % Math.max(1, Math.floor(scoreChart.dots.length / 6)) === 0}
+                        <!-- X labels -->
+                        {#each scoreChart.candles as c, i}
+                            {#if i === 0 || i === scoreChart.candles.length - 1 || i % Math.max(1, Math.floor(scoreChart.candles.length / 5)) === 0}
                                 <text
-                                    x={d.x}
+                                    x={c.x}
                                     y={H - 6}
                                     text-anchor="middle"
                                     font-size="10"
-                                    fill="#aaa">{formatDate(d.run.date)}</text
+                                    fill="#aaa">{formatDate(c.day.date)}</text
                                 >
                             {/if}
                         {/each}
@@ -287,14 +329,28 @@
                             class="tooltip"
                             style="left:{tooltip.x}px; top:{tooltip.y}px"
                         >
-                            <strong
-                                >{tooltip.run.score.toLocaleString()} pts</strong
+                            <strong>{formatDate(tooltip.day.date)}</strong>
+                            <span
+                                >High: <b>{tooltip.fmt(tooltip.day.high)}</b>
+                                {tooltip.unit}</span
                             >
-                            <span>{tooltip.run.accuracy}% accuracy</span>
-                            <span>{tooltip.run.avgRt ?? "—"}ms avg</span>
-                            <span class="tt-date"
-                                >{formatDate(tooltip.run.date)}
-                                {formatTime(tooltip.run.date)}</span
+                            <span
+                                >Low: <b>{tooltip.fmt(tooltip.day.low)}</b>
+                                {tooltip.unit}</span
+                            >
+                            <span
+                                >Open: {tooltip.fmt(tooltip.day.open)}
+                                {tooltip.unit}</span
+                            >
+                            <span
+                                >Close: {tooltip.fmt(tooltip.day.close)}
+                                {tooltip.unit}</span
+                            >
+                            <span class="tt-muted"
+                                >{tooltip.day.runs.length} run{tooltip.day.runs
+                                    .length > 1
+                                    ? "s"
+                                    : ""} that day</span
                             >
                         </div>
                     {/if}
@@ -302,32 +358,13 @@
             </section>
         {/if}
 
-        <!-- ── Accuracy chart ──────────────────────────────────────────────── -->
+        <!-- ── Accuracy candlestick ───────────────────────────────────────────── -->
         {#if accuracyChart}
+            {@const cw = candleWidth(accuracyChart.candles.length)}
             <section class="section">
-                <h2 class="section-title">Accuracy over time</h2>
-                <div class="chart-wrap" style="position:relative">
+                <h2 class="section-title">Accuracy</h2>
+                <div class="chart-wrap">
                     <svg width="100%" viewBox="0 0 {W} {H}" class="chart-svg">
-                        <defs>
-                            <linearGradient
-                                id="acc-grad"
-                                x1="0"
-                                y1="0"
-                                x2="0"
-                                y2="1"
-                            >
-                                <stop
-                                    offset="0%"
-                                    stop-color="#22C55E"
-                                    stop-opacity="0.15"
-                                />
-                                <stop
-                                    offset="100%"
-                                    stop-color="#22C55E"
-                                    stop-opacity="0"
-                                />
-                            </linearGradient>
-                        </defs>
                         {#each accuracyChart.yTicks as tick}
                             {@const y = yLabel(accuracyChart, tick)}
                             <line
@@ -346,40 +383,42 @@
                                 fill="#aaa">{tick}%</text
                             >
                         {/each}
-                        <polygon
-                            points={accuracyChart.area}
-                            fill="url(#acc-grad)"
-                        />
-                        <polyline
-                            points={accuracyChart.points}
-                            fill="none"
-                            stroke="#22C55E"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        />
-                        {#each accuracyChart.dots as d}
-                            <circle
-                                cx={d.x}
-                                cy={d.y}
-                                r="4"
-                                fill="#22C55E"
-                                stroke="white"
-                                stroke-width="2"
+                        {#each accuracyChart.candles as c}
+                            <line
+                                x1={c.x}
+                                y1={c.yHigh}
+                                x2={c.x}
+                                y2={c.yLow}
+                                stroke={c.up ? "#22C55E" : "#EF4444"}
+                                stroke-width="1.5"
+                            />
+                            {@const bodyTop = Math.min(c.yOpen, c.yClose)}
+                            {@const bodyHeight = Math.max(
+                                2,
+                                Math.abs(c.yClose - c.yOpen),
+                            )}
+                            <rect
+                                x={c.x - cw / 2}
+                                y={bodyTop}
+                                width={cw}
+                                height={bodyHeight}
+                                fill={c.up ? "#22C55E" : "#EF4444"}
                                 style="cursor:pointer"
                                 onmouseenter={(e) =>
-                                    showTooltip(e, d.run, "Accuracy")}
+                                    showTooltip(e, c.day, "%", (v) =>
+                                        v.toString(),
+                                    )}
                                 onmouseleave={hideTooltip}
                             />
                         {/each}
-                        {#each accuracyChart.dots as d, i}
-                            {#if i === 0 || i === accuracyChart.dots.length - 1 || i % Math.max(1, Math.floor(accuracyChart.dots.length / 6)) === 0}
+                        {#each accuracyChart.candles as c, i}
+                            {#if i === 0 || i === accuracyChart.candles.length - 1 || i % Math.max(1, Math.floor(accuracyChart.candles.length / 5)) === 0}
                                 <text
-                                    x={d.x}
+                                    x={c.x}
                                     y={H - 6}
                                     text-anchor="middle"
                                     font-size="10"
-                                    fill="#aaa">{formatDate(d.run.date)}</text
+                                    fill="#aaa">{formatDate(c.day.date)}</text
                                 >
                             {/if}
                         {/each}
@@ -389,13 +428,28 @@
                             class="tooltip"
                             style="left:{tooltip.x}px; top:{tooltip.y}px"
                         >
-                            <strong>{tooltip.run.accuracy}%</strong>
-                            <span>{tooltip.run.score.toLocaleString()} pts</span
+                            <strong>{formatDate(tooltip.day.date)}</strong>
+                            <span
+                                >High: <b>{tooltip.fmt(tooltip.day.high)}</b>
+                                {tooltip.unit}</span
                             >
-                            <span>{tooltip.run.avgRt ?? "—"}ms avg</span>
-                            <span class="tt-date"
-                                >{formatDate(tooltip.run.date)}
-                                {formatTime(tooltip.run.date)}</span
+                            <span
+                                >Low: <b>{tooltip.fmt(tooltip.day.low)}</b>
+                                {tooltip.unit}</span
+                            >
+                            <span
+                                >Open: {tooltip.fmt(tooltip.day.open)}
+                                {tooltip.unit}</span
+                            >
+                            <span
+                                >Close: {tooltip.fmt(tooltip.day.close)}
+                                {tooltip.unit}</span
+                            >
+                            <span class="tt-muted"
+                                >{tooltip.day.runs.length} run{tooltip.day.runs
+                                    .length > 1
+                                    ? "s"
+                                    : ""} that day</span
                             >
                         </div>
                     {/if}
@@ -403,36 +457,18 @@
             </section>
         {/if}
 
-        <!-- ── Response time chart ─────────────────────────────────────────── -->
+        <!-- ── Response time candlestick ──────────────────────────────────────── -->
         {#if rtChart}
+            {@const cw = candleWidth(rtChart.candles.length)}
             <section class="section">
                 <h2 class="section-title">
-                    Avg response time over time <span class="section-note"
-                        >(lower = faster)</span
+                    Avg response time
+                    <span class="section-note"
+                        >lower = faster · green = improved</span
                     >
                 </h2>
-                <div class="chart-wrap" style="position:relative">
+                <div class="chart-wrap">
                     <svg width="100%" viewBox="0 0 {W} {H}" class="chart-svg">
-                        <defs>
-                            <linearGradient
-                                id="rt-grad"
-                                x1="0"
-                                y1="0"
-                                x2="0"
-                                y2="1"
-                            >
-                                <stop
-                                    offset="0%"
-                                    stop-color="#F97316"
-                                    stop-opacity="0.15"
-                                />
-                                <stop
-                                    offset="100%"
-                                    stop-color="#F97316"
-                                    stop-opacity="0"
-                                />
-                            </linearGradient>
-                        </defs>
                         {#each rtChart.yTicks as tick}
                             {@const y = yLabel(rtChart, tick)}
                             <line
@@ -451,37 +487,44 @@
                                 fill="#aaa">{tick}ms</text
                             >
                         {/each}
-                        <polygon points={rtChart.area} fill="url(#rt-grad)" />
-                        <polyline
-                            points={rtChart.points}
-                            fill="none"
-                            stroke="#F97316"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        />
-                        {#each rtChart.dots as d}
-                            <circle
-                                cx={d.x}
-                                cy={d.y}
-                                r="4"
-                                fill="#F97316"
-                                stroke="white"
-                                stroke-width="2"
+                        {#each rtChart.candles as c}
+                            <!-- For RT, "up" (close > open) means got slower — color inverted -->
+                            {@const improved = c.close <= c.open}
+                            <line
+                                x1={c.x}
+                                y1={c.yHigh}
+                                x2={c.x}
+                                y2={c.yLow}
+                                stroke={improved ? "#22C55E" : "#EF4444"}
+                                stroke-width="1.5"
+                            />
+                            {@const bodyTop = Math.min(c.yOpen, c.yClose)}
+                            {@const bodyHeight = Math.max(
+                                2,
+                                Math.abs(c.yClose - c.yOpen),
+                            )}
+                            <rect
+                                x={c.x - cw / 2}
+                                y={bodyTop}
+                                width={cw}
+                                height={bodyHeight}
+                                fill={improved ? "#22C55E" : "#EF4444"}
                                 style="cursor:pointer"
                                 onmouseenter={(e) =>
-                                    showTooltip(e, d.run, "Response time")}
+                                    showTooltip(e, c.day, "ms", (v) =>
+                                        v.toString(),
+                                    )}
                                 onmouseleave={hideTooltip}
                             />
                         {/each}
-                        {#each rtChart.dots as d, i}
-                            {#if i === 0 || i === rtChart.dots.length - 1 || i % Math.max(1, Math.floor(rtChart.dots.length / 6)) === 0}
+                        {#each rtChart.candles as c, i}
+                            {#if i === 0 || i === rtChart.candles.length - 1 || i % Math.max(1, Math.floor(rtChart.candles.length / 5)) === 0}
                                 <text
-                                    x={d.x}
+                                    x={c.x}
                                     y={H - 6}
                                     text-anchor="middle"
                                     font-size="10"
-                                    fill="#aaa">{formatDate(d.run.date)}</text
+                                    fill="#aaa">{formatDate(c.day.date)}</text
                                 >
                             {/if}
                         {/each}
@@ -491,13 +534,28 @@
                             class="tooltip"
                             style="left:{tooltip.x}px; top:{tooltip.y}px"
                         >
-                            <strong>{tooltip.run.avgRt ?? "—"}ms</strong>
-                            <span>{tooltip.run.accuracy}% accuracy</span>
-                            <span>{tooltip.run.score.toLocaleString()} pts</span
+                            <strong>{formatDate(tooltip.day.date)}</strong>
+                            <span
+                                >Fastest: <b>{tooltip.fmt(tooltip.day.low)}</b>
+                                {tooltip.unit}</span
                             >
-                            <span class="tt-date"
-                                >{formatDate(tooltip.run.date)}
-                                {formatTime(tooltip.run.date)}</span
+                            <span
+                                >Slowest: <b>{tooltip.fmt(tooltip.day.high)}</b>
+                                {tooltip.unit}</span
+                            >
+                            <span
+                                >First: {tooltip.fmt(tooltip.day.open)}
+                                {tooltip.unit}</span
+                            >
+                            <span
+                                >Last: {tooltip.fmt(tooltip.day.close)}
+                                {tooltip.unit}</span
+                            >
+                            <span class="tt-muted"
+                                >{tooltip.day.runs.length} run{tooltip.day.runs
+                                    .length > 1
+                                    ? "s"
+                                    : ""} that day</span
                             >
                         </div>
                     {/if}
@@ -505,7 +563,7 @@
             </section>
         {/if}
 
-        <!-- ── Run history table ───────────────────────────────────────────── -->
+        <!-- ── Run history table ───────────────────────────────────────────────── -->
         <section class="section">
             <h2 class="section-title">Run history</h2>
             <div class="table-wrap">
@@ -525,11 +583,12 @@
                             {@const isBest = run.score === bestScore}
                             <tr class:best-row={isBest}>
                                 <td class="num">{runs.length - i}</td>
-                                <td class="date-cell"
-                                    >{formatDate(run.date)}<span class="time"
+                                <td class="date-cell">
+                                    {formatDate(run.date)}
+                                    <span class="time"
                                         >{formatTime(run.date)}</span
-                                    ></td
-                                >
+                                    >
+                                </td>
                                 <td class="score-cell">
                                     {run.score.toLocaleString()}
                                     {#if isBest}<span class="badge">best</span
@@ -562,7 +621,7 @@
             </div>
         </section>
 
-        <!-- ── Clear data ──────────────────────────────────────────────────── -->
+        <!-- ── Clear ──────────────────────────────────────────────────────────── -->
         <section class="section">
             <button
                 class="btn-danger"
@@ -599,20 +658,20 @@
         color: #aaa;
     }
 
-    /* ── Sections ─────────────────────────────────────────────────────────── */
     .section {
         margin-bottom: 40px;
     }
 
     .section-title {
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.06em;
         margin-bottom: 14px;
         display: flex;
         align-items: baseline;
-        gap: 8px;
+        gap: 10px;
+        flex-wrap: wrap;
     }
 
     .section-note {
@@ -623,7 +682,7 @@
         letter-spacing: 0;
     }
 
-    /* ── Summary grid ─────────────────────────────────────────────────────── */
+    /* ── Summary ──────────────────────────────────────────────────────────── */
     .summary-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -667,6 +726,7 @@
     /* ── Charts ───────────────────────────────────────────────────────────── */
     .chart-wrap {
         border: 1.5px solid #ddd;
+        position: relative;
         overflow: visible;
     }
 
@@ -680,11 +740,10 @@
         border: 1.5px solid #ddd;
         padding: 8px 10px;
         font-size: 12px;
-        font-weight: 600;
         pointer-events: none;
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 3px;
         transform: translate(-50%, -100%);
         white-space: nowrap;
         z-index: 10;
@@ -692,10 +751,12 @@
     }
 
     .tooltip strong {
-        font-size: 14px;
+        font-size: 13px;
+        font-weight: 800;
+        margin-bottom: 2px;
     }
 
-    .tt-date {
+    .tt-muted {
         color: #aaa;
         font-size: 10px;
         margin-top: 2px;
@@ -734,7 +795,6 @@
     tr:last-child td {
         border-bottom: none;
     }
-
     tr.best-row {
         background: #ebf0fd;
     }
@@ -749,7 +809,6 @@
         flex-direction: column;
         gap: 1px;
     }
-
     .time {
         font-size: 10px;
         color: #bbb;
@@ -786,7 +845,7 @@
         max-width: 80px;
     }
 
-    /* ── Actions ──────────────────────────────────────────────────────────── */
+    /* ── Buttons ──────────────────────────────────────────────────────────── */
     .btn-primary {
         display: inline-flex;
         align-items: center;
