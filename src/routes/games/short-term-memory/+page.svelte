@@ -248,8 +248,8 @@
 
 <!-- ═══ INTRO ═══════════════════════════════════════════════════════════════ -->
 {#if phase === "intro"}
-    <div class="center-wrap">
-        <div class="flex-col gap-large card">
+    <div id="instructions">
+        <div class="instruction-card">
             <div class="flex-col gap-small">
                 <h2>ATC Memory</h2>
                 <p>
@@ -606,7 +606,8 @@
         border: 0;
     }
 
-    .center-wrap {
+    #instructions {
+        background-color: var(--off);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -614,12 +615,19 @@
         padding: 24px 16px 60px;
     }
 
-    .card {
-        width: 100%;
-        max-width: 480px;
-        padding: 24px 20px;
-        background: white;
-        border: 1.5px solid #ddd;
+    .instruction-card {
+        position: absolute;
+        bottom: 0;
+
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+
+        border-top-left-radius: 2rem;
+        border-top-right-radius: 2rem;
+
+        padding: 2rem;
+        background: var(--light);
     }
 
     .game-wrap {

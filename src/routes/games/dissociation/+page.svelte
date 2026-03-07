@@ -186,15 +186,21 @@
 
 <!-- ═══ RULES ════════════════════════════════════════════════════════════════ -->
 {#if phase === "rules"}
-    <div class="center-wrap">
-        <div class="flex-col gap-large" style="max-width:460px; width:100%">
+    <div id="instructions">
+        <div class="shapes">
+            <img src={triangleFilledOrange} />
+            <img src={squareEmptyBlue} />
+            <img src={squareFilledOrange} />
+            <img src={triangleEmptyBlue} />
+        </div>
+        <div class="instruction-card">
             {#if !rules}<div style="min-height:300px"></div>{:else}
-                <div class="flex-col gap-small">
+                <div class="header">
                     <h2>How to play</h2>
                     <p>
                         See <strong>30 shapes</strong> for
                         <strong>0.5 s</strong> each. Press left or right based on
-                        two rules.
+                        the following two rules.
                     </p>
                 </div>
 
@@ -202,15 +208,21 @@
                     {#each ["A", "B"] as const as group}
                         {@const rule =
                             group === "A" ? rules.groupA : rules.groupB}
-                        <div class="rule-box flex-col gap-small">
+                        <div class="rule-box flex-col gap-medium">
                             <strong>{groupLabel(rules!, group)}</strong>
-                            <div class="flex-row align-items:center gap-small">
-                                <span class="key-badge">←</span>
-                                <span>{subRuleLabel(rule, "left")}</span>
-                            </div>
-                            <div class="flex-row align-items:center gap-small">
-                                <span class="key-badge">→</span>
-                                <span>{subRuleLabel(rule, "right")}</span>
+                            <div class="flex-col gap-small">
+                                <div
+                                    class="flex-row align-items:center gap-small"
+                                >
+                                    <span class="key-badge">←</span>
+                                    <span>{subRuleLabel(rule, "left")}</span>
+                                </div>
+                                <div
+                                    class="flex-row align-items:center gap-small"
+                                >
+                                    <span class="key-badge">→</span>
+                                    <span>{subRuleLabel(rule, "right")}</span>
+                                </div>
                             </div>
                         </div>
                     {/each}
@@ -218,13 +230,13 @@
 
                 <p
                     class="secondary outlined rounded padded"
-                    style="text-align:center"
+                    style="text-align:center; font-size:0.9rem;"
                 >
-                    ⚡ Speed matters — faster correct answers score more points
+                    Faster correct answers score more points!
                 </p>
 
                 <button class="primary rounded padded wide" onclick={startGame}>
-                    Start — 30 shapes
+                    Start
                 </button>
             {/if}
         </div>
@@ -232,7 +244,7 @@
 
     <!-- ═══ PLAYING ══════════════════════════════════════════════════════════════ -->
 {:else if phase === "playing"}
-    <div class="game-wrap flex-col align-items:center gap-medium">
+    <div id="game" class="game-wrap flex-col align-items:center gap-medium">
         <div class="flex-row align-items:center gap-medium" style="width:100%">
             <div class="progress-track">
                 <div
@@ -274,39 +286,37 @@
             {/if}
         </div>
 
-        <div class="reminder flex-col gap-small">
-            {#each ["A", "B"] as const as group}
-                {@const rule = group === "A" ? rules!.groupA : rules!.groupB}
-                <div
-                    class="flex-row align-items:center gap-small"
-                    style="font-size:13px"
+        <div class="actions">
+            <div class="buttons">
+                <button class="primary rounded" onclick={() => respond("left")}>
+                    <ArrowLeft size={20} /> Left
+                </button>
+                <button
+                    class="primary rounded"
+                    onclick={() => respond("right")}
                 >
-                    <strong style="min-width:88px"
-                        >{groupLabel(rules!, group)}</strong
+                    Right <ArrowRight size={20} />
+                </button>
+            </div>
+
+            <div class="reminder flex-col gap-small">
+                {#each ["A", "B"] as const as group}
+                    {@const rule =
+                        group === "A" ? rules!.groupA : rules!.groupB}
+                    <div
+                        class="flex-row align-items:center gap-small"
+                        style="font-size:13px"
                     >
-                    <span>← {subRuleLabel(rule, "left")}</span>
-                    <span style="color:#bbb">·</span>
-                    <span>→ {subRuleLabel(rule, "right")}</span>
-                </div>
-            {/each}
+                        <strong style="min-width:88px"
+                            >{groupLabel(rules!, group)}</strong
+                        >
+                        <span>← {subRuleLabel(rule, "left")}</span>
+                        <span style="color:#bbb">·</span>
+                        <span>→ {subRuleLabel(rule, "right")}</span>
+                    </div>
+                {/each}
+            </div>
         </div>
-
-        <div class="flex-row gap-medium" style="width:100%; max-width:380px">
-            <button
-                class="btn-resp primary rounded"
-                onclick={() => respond("left")}
-            >
-                <ArrowLeft size={20} /> Left
-            </button>
-            <button
-                class="btn-resp primary rounded"
-                onclick={() => respond("right")}
-            >
-                Right <ArrowRight size={20} />
-            </button>
-        </div>
-
-        <p style="font-size:12px; color:#bbb">← → arrow keys also work</p>
     </div>
 
     <!-- ═══ RESULTS ══════════════════════════════════════════════════════════════ -->
@@ -416,30 +426,111 @@
     </div>
 {/if}
 
-<style>
-    .center-wrap {
+<style lang="scss">
+    #instructions {
+        background-color: var(--off);
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: calc(100vh - 65px);
-        padding: 40px 20px 80px;
+        min-height: calc(100vh - 57px);
+        padding: 24px 16px 60px;
+
+        .shapes {
+            position: absolute;
+            top: 0rem;
+            height: 50%;
+
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            width: 100%;
+
+            img {
+                width: 6rem;
+                height: 6rem;
+            }
+        }
+
+        .instruction-card {
+            position: absolute;
+            bottom: 0;
+
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+
+            border-top-left-radius: 2rem;
+            border-top-right-radius: 2rem;
+
+            padding: 2rem;
+            background: var(--light);
+
+            .header {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+                margin-bottom: 1rem;
+            }
+
+            .rule-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+            }
+
+            .rule-box {
+                border: 1.5px solid var(--outline);
+                border-radius: 0.4rem;
+                padding: 14px;
+            }
+
+            button {
+                border: 0;
+            }
+        }
+    }
+
+    #game {
+        .actions {
+            position: absolute;
+            bottom: 0;
+
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+
+            border-top-left-radius: 2rem;
+            border-top-right-radius: 2rem;
+
+            padding: 2rem;
+            background: var(--light);
+            width: 100%;
+        }
+
+        .buttons {
+            display: flex;
+            flex-direction: row;
+            gap: 1rem;
+
+            button {
+                border: 0;
+
+                flex: 1;
+                padding: 1rem;
+                font-size: 1.4rem;
+                font-weight: bold;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+            }
+        }
     }
 
     .wide {
         width: 100%;
-    }
-
-    /* Rules */
-    .rule-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-    }
-
-    .rule-box {
-        border: 1.5px solid #ddd;
-        border-radius: var(--radius-sm);
-        padding: 14px;
     }
 
     .key-badge {
@@ -458,12 +549,13 @@
         max-width: 520px;
         margin: 0 auto;
         width: 100%;
+        background-color: var(--off);
     }
 
     .progress-track {
         flex: 1;
         height: 6px;
-        background: #e5e5e5;
+        background: var(--light);
         border-radius: 99px;
         overflow: hidden;
     }
@@ -477,8 +569,9 @@
     .arena {
         width: 240px;
         height: 240px;
-        border-radius: var(--radius-lg);
-        border: 2px solid #ddd;
+        border-radius: 0.8em;
+
+        background-color: var(--light);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -530,22 +623,11 @@
     }
 
     .reminder {
-        border: 1.5px solid #ddd;
-        border-radius: var(--radius-sm);
+        background-color: var(--light);
+        border-radius: 0.8rem;
         padding: 10px 14px;
         width: 100%;
         max-width: 380px;
-    }
-
-    .btn-resp {
-        flex: 1;
-        padding: 14px 12px;
-        font-size: 16px;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
     }
 
     /* Results */
