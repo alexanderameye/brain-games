@@ -19,6 +19,15 @@
             description: "Train short term memory",
             color: "var(--green)",
         },
+        {
+            id: "trigquiz",
+            href: "/games/trigquiz",
+            statsHref: "/trigquiz/stats",
+            title: "Trig quiz",
+
+            description: "Train trigonometry",
+            color: "var(--yellow)",
+        },
     ];
 
     function getStats(gameId: string) {
